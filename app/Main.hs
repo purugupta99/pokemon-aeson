@@ -5,12 +5,14 @@
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE TypeApplications          #-}
+{-# LANGUAGE TemplateHaskell           #-}
 
 module Main where
 
 import Control.Lens
 import Control.Monad.IO.Class
 import Data.Aeson
+import Data.Aeson.TH
 -- import Data.Attoparsec
 import Data.ByteString
 import qualified Data.ByteString.Lazy as BL
@@ -22,16 +24,16 @@ import Network.HTTP.Req
 
 data Pokemon = Pokemon {
     id :: Maybe Int,
-    -- name :: PokemonName,
-    -- pokemonType :: [String],
-    -- base :: PokemonBase,
-    -- species :: String,
-    -- description :: String,
+    name :: PokemonName,
+    pokemonType :: [String],
+    base :: PokemonBase,
+    species :: String,
+    description :: String,
     evolution :: PokemonEvolution,
-    -- profile :: PokemonProfile,
-    -- image :: Value,
-    -- sprite :: String,
-    -- thumbnail :: String,
+    profile :: PokemonProfile,
+    image :: Value,
+    sprite :: String,
+    thumbnail :: String,
     hires :: String
 } deriving (Show, Generic)
 
@@ -43,12 +45,12 @@ data PokemonName = PokemonName {
 } deriving (Show, Generic)
 
 data PokemonBase = PokemonBase {
-    hp :: Int,
-    attack :: Int,
-    defense :: Int,
-    specialAttack :: Int,
-    specialDefence :: Int,
-    speed :: Int
+    hp :: Maybe Int,
+    attack :: Maybe Int,
+    defense :: Maybe Int,
+    specialAttack :: Maybe Int,
+    specialDefence :: Maybe Int,
+    speed :: Maybe Int
 } deriving (Show, Generic)
 
 data PokemonEvolution = PokemonEvolution {
@@ -64,7 +66,19 @@ data PokemonProfile = PokemonProfile {
     gender :: String
 } deriving (Show, Generic)
 
-instance FromJSON Pokemon
+$(deriveFromJSON defaultOptions {
+    fieldLabelModifier = let f "pokemonType" = "type"
+                             f "hp" = "HP"
+                             f "attack" = "Attack"
+                             f "defense" = "Defense"
+                             f "specialAttack" = "Sp. Attack"
+                             f "specialDefense" = "Sp. Defense"
+                             f "speed" = "Speed"
+                             f other = other
+                         in f
+} ''Pokemon)
+
+-- instance FromJSON Pokemon
 instance ToJSON Pokemon
 
 instance FromJSON PokemonName
@@ -94,6 +108,9 @@ main = runReq defaultHttpConfig $ do
         pokeData = fromJust jsonResp
 
         id = fromJust $ view (field @"id") pokeData
+
+        pokeNameEng = view (field @"name" . field @"english") pokeData
+
         pokeEvo = evolution pokeData
 
         pokePrevEvo = fromJust $ view (field @"prev") pokeEvo
@@ -103,5 +120,6 @@ main = runReq defaultHttpConfig $ do
 
     liftIO $ print jsonResp
     liftIO $ print id
+    liftIO $ print pokeNameEng
     liftIO $ print pokePrevEvo
     liftIO $ print pokeNextEvo
