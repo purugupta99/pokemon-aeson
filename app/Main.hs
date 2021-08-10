@@ -88,6 +88,7 @@ $( deriveFromJSON
                 f "speed"            = "Speed"
                 f other              = other
                 in f
+                -- TODO: Fix pokemon base fields, it is not being parsed right now
        }
      ''Pokemon
  )
