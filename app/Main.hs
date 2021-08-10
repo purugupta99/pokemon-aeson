@@ -13,10 +13,8 @@ import              Control.Lens
 import              Control.Monad.IO.Class
 import              Data.Aeson
 import              Data.Aeson.TH
-import              Data.ByteString
 import qualified    Data.ByteString.Lazy    as BL
 import              Data.Generics.Product
-import              Data.Generics.Sum
 import              Data.Maybe
 import              GHC.Generics            (Generic)
 import              Network.HTTP.Req
@@ -49,12 +47,12 @@ data PokemonName = PokemonName
 
 data PokemonBase = PokemonBase
   { 
-      hp                :: Maybe Int
-    , attack            :: Maybe Int
-    , defense           :: Maybe Int
-    , specialAttack     :: Maybe Int
-    , specialDefence    :: Maybe Int
-    , speed             :: Maybe Int
+      hp                :: Int
+    , attack            :: Int
+    , defense           :: Int
+    , specialAttack     :: Int
+    , specialDefence    :: Int
+    , speed             :: Int
   }
   deriving (Show, Generic)
 
@@ -80,18 +78,28 @@ $( deriveFromJSON
        {
            fieldLabelModifier =
             let f "pokemonType"      = "type"
-                f "hp"               = "HP"
-                f "attack"           = "Attack"
-                f "defense"          = "Defense"
-                f "specialAttack"    = "Sp. Attack"
-                f "specialDefense"   = "Sp. Defense"
-                f "speed"            = "Speed"
                 f other              = other
                 in f
-                -- TODO: Fix pokemon base fields, it is not being parsed right now
        }
      ''Pokemon
  )
+
+$( deriveFromJSON
+     defaultOptions
+       {
+           fieldLabelModifier =
+            let f "hp"               = "HP"
+                f "attack"           = "Attack"
+                f "defense"          = "Defense"
+                f "specialAttack"    = "Sp. Attack"
+                f "specialDefence"   = "Sp. Defense"
+                f "speed"            = "Speed"
+                f other              = other
+                in f
+       }
+     ''PokemonBase
+ )
+
 
 -- instance FromJSON Pokemon
 instance ToJSON Pokemon
@@ -99,7 +107,6 @@ instance ToJSON Pokemon
 instance FromJSON PokemonName
 instance ToJSON PokemonName
 
-instance FromJSON PokemonBase
 instance ToJSON PokemonBase
 
 instance FromJSON PokemonEvolution
