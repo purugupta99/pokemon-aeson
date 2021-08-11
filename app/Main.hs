@@ -101,8 +101,6 @@ $( deriveFromJSON
      ''PokemonBase
  )
 
-
--- instance FromJSON Pokemon
 instance ToJSON Pokemon
 
 instance FromJSON PokemonName
@@ -141,8 +139,6 @@ main = runReq defaultHttpConfig $ do
       idPrev        = head pokePrevEvo
       pokeNextEvo   = fromJust $ view (field @"evolution" . field @"next") pokeData
       idNext        = head $ head pokeNextEvo
-
-  -- id = view (field @"id" ._Just) $ fromJust jsonResp
   
   rPrev <- getResourceByID idPrev
   rNext <- getResourceByID idNext
