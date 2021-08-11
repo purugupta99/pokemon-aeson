@@ -16,6 +16,7 @@ import              Data.Aeson.TH
 import qualified    Data.ByteString.Lazy    as BL
 import              Data.Generics.Product
 import              Data.Maybe
+import qualified    Data.Text               as T
 import              GHC.Generics            (Generic)
 import              Network.HTTP.Req
 
@@ -37,7 +38,7 @@ data Pokemon = Pokemon
   deriving (Show, Generic)
 
 data PokemonName = PokemonName
-  { 
+  {
       english           :: String
     , japanese          :: String
     , chinese           :: String
@@ -46,7 +47,7 @@ data PokemonName = PokemonName
   deriving (Show, Generic)
 
 data PokemonBase = PokemonBase
-  { 
+  {
       hp                :: Int
     , attack            :: Int
     , defense           :: Int
@@ -57,14 +58,14 @@ data PokemonBase = PokemonBase
   deriving (Show, Generic)
 
 data PokemonEvolution = PokemonEvolution
-  { 
-      prev              :: [String]
-    , next              :: [[String]]
+  {
+      prev              :: Maybe [String]
+    , next              :: Maybe [[String]]
   }
   deriving (Show, Generic)
 
 data PokemonProfile = PokemonProfile
-  { 
+  {
       height            :: String
     , weight            :: String
     , egg               :: [String]
@@ -115,17 +116,20 @@ instance ToJSON PokemonEvolution
 instance FromJSON PokemonProfile
 instance ToJSON PokemonProfile
 
-getResource :: MonadHttp m => m BsResponse
-getResource = req GET (https "app.pokemon-api.xyz" /: "pokemon" /: "pikachu") NoReqBody bsResponse mempty
+getPikachu :: MonadHttp m => m BsResponse
+getPikachu = req GET (https "app.pokemon-api.xyz" /: "pokemon" /: "pikachu") NoReqBody bsResponse mempty
+
+getResourceByID :: MonadHttp m => String -> m BsResponse
+getResourceByID pokeID = req GET (https "app.pokemon-api.xyz" /: "pokemon" /: T.pack pokeID) NoReqBody bsResponse mempty
+
+parseResp :: BsResponse -> Pokemon
+parseResp = fromJust . decode . BL.fromStrict . responseBody
 
 main :: IO ()
 main = runReq defaultHttpConfig $ do
-  r <- getResource
-  let resp = responseBody r
-      -- jsonResp = parse json resp
-      jsonResp :: Maybe Pokemon
-      jsonResp      = decode $ BL.fromStrict resp
-      pokeData      = fromJust jsonResp
+  r <- getPikachu
+  let 
+      pokeData      = parseResp r
 
       id            = view (field @"id") pokeData
 
@@ -133,13 +137,22 @@ main = runReq defaultHttpConfig $ do
 
       pokeEvo       = evolution pokeData
 
-      pokePrevEvo   = view (field @"prev") pokeEvo
-      pokeNextEvo   = view (field @"evolution" . field @"next") pokeData
+      pokePrevEvo   = fromJust $ view (field @"prev") pokeEvo
+      idPrev        = head pokePrevEvo
+      pokeNextEvo   = fromJust $ view (field @"evolution" . field @"next") pokeData
+      idNext        = head $ head pokeNextEvo
 
   -- id = view (field @"id" ._Just) $ fromJust jsonResp
+  
+  rPrev <- getResourceByID idPrev
+  rNext <- getResourceByID idNext
+  let
+      pokeNamePrev  = view (field @"name" . field @"english") $ parseResp rPrev
+      pokeNameNext  = view (field @"name" . field @"english") $ parseResp rNext
 
-  liftIO $ print jsonResp
   liftIO $ print id
   liftIO $ print pokeNameEng
   liftIO $ print pokePrevEvo
+  liftIO $ print $ "Previous: " ++ pokeNamePrev
   liftIO $ print pokeNextEvo
+  liftIO $ print $ "Next: " ++ pokeNameNext
